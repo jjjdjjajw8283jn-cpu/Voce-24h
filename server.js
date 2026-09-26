@@ -1,23 +1,33 @@
 import express from "express";
 import { Client } from "discord.js-selfbot-v13";
 import { joinVoiceChannel, entersState, VoiceConnectionStatus } from "@discordjs/voice";
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 
-// صفحة بسيطة لمنع الخادم من التوقف
 app.get("/", (req, res) => {
   res.send("Bot Server is Running 24/7!");
 });
 
-// قراءة التوكن والروم من Variables في Railway
-const TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
-const CHANNEL_ID = process.env.VOICE_CHANNEL_ID || process.env.CHANNEL_ID;
+// تنظيف المتغيرات من أي مسافات
+const TOKEN = (process.env.TOKEN || process.env.DISCORD_TOKEN || "").trim();
+const CHANNEL_ID = (process.env.VOICE_CHANNEL_ID || process.env.CHANNEL_ID || "").trim();
+
+// ترقيع مؤقت لتفادي مشكلة friend_source_flags في المكتبة
+try {
+  const ClientUserSettingManager = (await import("discord.js-selfbot-v13/src/managers/ClientUserSettingManager.js")).default;
+  const originalPatch = ClientUserSettingManager.prototype._patch;
+  ClientUserSettingManager.prototype._patch = function (data) {
+    if (data && !data.friend_source_flags) {
+      data.friend_source_flags = { all: false, mutual_guilds: false, mutual_friends: false };
+    }
+    return originalPatch.call(this, data);
+  };
+} catch (e) {
+  // تجاوز في حال تعذر الترقيع المباشر
+}
 
 async function startBot() {
   if (!TOKEN || !CHANNEL_ID) {
@@ -39,7 +49,7 @@ async function startBot() {
   try {
     await client.login(TOKEN);
   } catch (err) {
-    console.error("❌ فشل تسجيل الدخول (تحقق من التوكن):", err.message);
+    console.error("❌ فشل تسجيل الدخول (التوكن غير صحيح أو تم حظره):", err.message);
   }
 }
 
@@ -69,11 +79,17 @@ async function connectToVoice(client, channelId) {
 
   } catch (error) {
     console.error("❌ خطأ في دخول القناة الصوتية:", error.message);
-    setTimeout(() => connectToVoice(client, channelId), 15_000);
   }
 }
 
-// تشغيل الخادم والبدء تلقائياً
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️ خطأ غير معالج:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("⚠️ استثناء غير متوقع:", err.message);
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 الخادم يعمل على الرابط: http://localhost:${PORT}`);
   startBot();
