@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تشغيل بوت ديسكورد صوتي</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      text-align: center;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #7289da;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #5a6bb3;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: left;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>تشغيل بوت ديسكورد صوتي</h1>
+    <p>أدخل التوكن الخاص بحساب المستخدم ومعرف القناة الصوتية:</p>
+
+    <input type="text" id="token" placeholder="توكن حساب ديسكورد (مثال: mfa.xxxxx)">
+    <input type="text" id="channelId" placeholder="معرف القناة الصوتية (مثال: 123456789012345678)">
+
+    <button onclick="startBot()">تشغيل البوت</button>
+    <button onclick="stopBot()" style="background-color: #dc3545;">إيقاف البوت</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function startBot() {
+      const token = document.getElementById("token").value;
+      const channelId = document.getElementById("channelId").value;
+      const resultDiv = document.getElementById("result");
+
+      if (!token || !channelId) {
+        resultDiv.innerHTML = "يجب إدخال التوكن ومعرف القناة!";
+        resultDiv.className = "error";
+        return;
+      }
+
+      resultDiv.innerHTML = "جاري تشغيل البوت...";
+      resultDiv.className = "";
+
+      try {
+        const response = await fetch("/start-bot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, channelId })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <strong>تم تشغيل البوت بنجاح!</strong><br>
+            اسم الحساب: ${data.message}<br>
+            <a href="${data.statusUrl}" target="_blank">رابط حالة البوت</a>
+          `;
+          resultDiv.className = "success";
+        } else {
+          resultDiv.innerHTML = `خطأ: ${data.error}`;
+          resultDiv.className = "error";
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `خطأ في الاتصال بالخادم: ${error.message}`;
+        resultDiv.className = "error";
+      }
+    }
+
+    async function stopBot() {
+      const token = document.getElementById("token").value;
+      const resultDiv = document.getElementById("result");
+
+      if (!token) {
+        resultDiv.innerHTML = "يجب إدخال التوكن!";
+        resultDiv.className = "error";
+        return;
+      }
+
+      try {
+        const response = await fetch("/stop-bot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          resultDiv.innerHTML = data.message;
+          resultDiv.className = "success";
+        } else {
+          resultDiv.innerHTML = `خطأ: ${data.error}`;
+          resultDiv.className = "error";
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `خطأ في الاتصال بالخادم: ${error.message}`;
+        resultDiv.className = "error";
+      }
+    }
+  </script>
+</body>
+</html>
